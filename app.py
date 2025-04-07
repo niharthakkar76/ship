@@ -369,6 +369,18 @@ def main():
                 avg_gap = np.mean([stats['avg_gap_hours'] for stats in berth_stats.values()])
                 total_vessels = sum(stats['num_vessels'] for stats in berth_stats.values())
                 
+                # Custom CSS for black text in metrics
+                st.markdown("""
+                <style>
+                [data-testid="stMetricLabel"] {
+                    color: #000000 !important;
+                }
+                [data-testid="stMetricValue"] {
+                    color: #000000 !important;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Average Berth Utilization", f"{total_utilization:.1f}%")
@@ -386,8 +398,8 @@ def main():
                         timeline_data.append({
                             'Berth': berth,
                             'Vessel': row['Vessel_Name'],
-                            'Start': row['Arrival_at_Berth'],
-                            'End': row['Predicted_Departure'],
+                            'Start': pd.to_datetime(row['Arrival_at_Berth']),
+                            'End': pd.to_datetime(row['Predicted_Departure']),
                             'Duration': row['Predicted_Hours_at_Berth']
                         })
                 
@@ -396,6 +408,33 @@ def main():
                     fig = px.timeline(timeline_df, x_start='Start', x_end='End', y='Berth', 
                                    color='Duration', hover_data=['Vessel'],
                                    title="Vessel Berth Occupancy Timeline")
+                    
+                    # Update timeline layout for better visibility
+                    fig.update_layout(
+                        plot_bgcolor='white',
+                        paper_bgcolor='white',
+                        font=dict(color='black', size=12),
+                        title_font=dict(color='black', size=14),
+                        xaxis=dict(
+                            title='Timeline',
+                            showgrid=True,
+                            gridcolor='rgba(0,0,0,0.1)',
+                            title_font=dict(color='black'),
+                            tickfont=dict(color='black')
+                        ),
+                        yaxis=dict(
+                            title='Berth',
+                            showgrid=True,
+                            gridcolor='rgba(0,0,0,0.1)',
+                            title_font=dict(color='black'),
+                            tickfont=dict(color='black')
+                        ),
+                        coloraxis_colorbar=dict(
+                            title='Duration (hours)',
+                            title_font=dict(color='black'),
+                            tickfont=dict(color='black')
+                        )
+                    )
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("No timeline data available")
