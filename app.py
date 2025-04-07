@@ -799,44 +799,87 @@ def main():
                     date_stats = {'Date': date}
                     
                     # Calculate utilization
-                    total_hours = 0
                     total_gap_hours = 0
                     gap_count = 0
                     vessel_count = 0
-                
+                    total_berth_hours = 0
+                    num_berths = len(df_processed['Berth_Code'].unique())
+                    
+                    # Calculate total available hours for all berths on this date
+                    total_available_hours = 24 * num_berths
+                    
                     for berth in df_processed['Berth_Code'].unique():
                         berth_df = date_df[date_df['Berth_Code'] == berth]
                         if not berth_df.empty:
-                            hours = berth_df['Predicted_Hours_at_Berth'].sum()
-                            total_hours += hours
                             vessel_count += len(berth_df)
+                            
+                            # Sort by arrival time and ensure datetime format
+                            berth_df = berth_df.sort_values('Arrival_at_Berth')
+                            berth_df['Arrival_at_Berth'] = pd.to_datetime(berth_df['Arrival_at_Berth'])
+                            berth_df['Predicted_Departure'] = pd.to_datetime(berth_df['Predicted_Departure'])
+                            
+                            # Get start and end of day for this date
+                            day_start = pd.to_datetime(date).replace(hour=0, minute=0, second=0)
+                            day_end = day_start + pd.Timedelta(days=1)
+                            
+                            # Calculate actual berth hours within this day only
+                            berth_hours = 0
+                            
+                            for _, vessel in berth_df.iterrows():
+                                arrival = max(vessel['Arrival_at_Berth'], day_start)
+                                departure = min(vessel['Predicted_Departure'], day_end)
+                                
+                                # Only count if vessel was present during this day
+                                if arrival < day_end and departure > day_start:
+                                    hours = (departure - arrival).total_seconds() / 3600
+                                    berth_hours += min(hours, 24)  # Cap at 24 hours per vessel per day
+                            
+                            total_berth_hours += min(berth_hours, 24)  # Cap at 24 hours per berth
                             
                             # Calculate gaps between vessels
                             if len(berth_df) > 1:
-                                # Sort by arrival time and ensure datetime format
-                                berth_df = berth_df.sort_values('Arrival_at_Berth')
-                                berth_df['Arrival_at_Berth'] = pd.to_datetime(berth_df['Arrival_at_Berth'])
-                                berth_df['Predicted_Departure'] = pd.to_datetime(berth_df['Predicted_Departure'])
-                                
-                                # Calculate gaps between consecutive vessels
                                 for i in range(len(berth_df)-1):
                                     current_departure = berth_df['Predicted_Departure'].iloc[i]
                                     next_arrival = berth_df['Arrival_at_Berth'].iloc[i+1]
-                                    gap = (next_arrival - current_departure).total_seconds() / 3600
                                     
-                                    # Only count gaps where there's actual time between vessels
-                                    if gap > 0:
-                                        total_gap_hours += gap
-                                        gap_count += 1
+                                    # Only consider gaps within the same day
+                                    if current_departure >= day_start and next_arrival <= day_end:
+                                        gap = (next_arrival - current_departure).total_seconds() / 3600
+                                        if gap > 0:
+                                            total_gap_hours += gap
+                                            gap_count += 1
                 
-                    date_stats['Utilization'] = (total_hours / (24 * len(df_processed['Berth_Code'].unique()))) * 100
+                    # Calculate utilization percentage (capped at 100%)
+                    utilization = (total_berth_hours / total_available_hours) * 100
+                    date_stats['Utilization'] = min(utilization, 100)  # Cap at 100%
+                    
+                    # Store detailed stats
+                    date_stats.update({
+                        'Total_Berth_Hours': round(total_berth_hours, 2),
+                        'Available_Hours': total_available_hours,
+                        'Utilization': round(utilization, 2),
+                        'Num_Berths': num_berths,
+                        'Vessel_Count': vessel_count,
+                        'Average_Gap': round(total_gap_hours / gap_count if gap_count > 0 else 0, 2)
+                    })
                     date_stats['Average_Gap'] = total_gap_hours / gap_count if gap_count > 0 else 0
                     date_stats['Vessel_Count'] = vessel_count
                     daily_stats.append(date_stats)
             
                 daily_df = pd.DataFrame(daily_stats)
                 
+                # Display detailed statistics table
+                st.markdown("### Daily Berth Statistics")
+                stats_df = daily_df[['Date', 'Total_Berth_Hours', 'Available_Hours', 'Utilization', 'Num_Berths', 'Vessel_Count', 'Average_Gap']]
+                stats_df.columns = ['Date', 'Total Berth Hours', 'Available Hours', 'Utilization (%)', 'Number of Berths', 'Number of Vessels', 'Average Gap (hrs)']
+                st.dataframe(stats_df.style.format({
+                    'Total Berth Hours': '{:.2f}',
+                    'Utilization (%)': '{:.2f}',
+                    'Average Gap (hrs)': '{:.2f}'
+                }), use_container_width=True)
+                
                 # Create visualizations
+                st.markdown("### Utilization and Gap Trends")
                 col1, col2 = st.columns(2)
                 
                 with col1:
