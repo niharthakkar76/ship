@@ -392,49 +392,78 @@ def main():
                 # Show timeline
                 st.subheader("Berth Timeline")
                 timeline_data = []
+                
+                # Debug info
+                st.write("Debug: Number of berths:", len(berth_stats.keys()))
+                st.write("Debug: Berths:", list(berth_stats.keys()))
+                
                 for berth in berth_stats.keys():
                     berth_df = df_processed[df_processed['Berth_Code'] == berth]
+                    st.write(f"Debug: Number of vessels for {berth}:", len(berth_df))
+                    
                     for _, row in berth_df.iterrows():
-                        timeline_data.append({
-                            'Berth': berth,
-                            'Vessel': row['Vessel_Name'],
-                            'Start': pd.to_datetime(row['Arrival_at_Berth']),
-                            'End': pd.to_datetime(row['Predicted_Departure']),
-                            'Duration': row['Predicted_Hours_at_Berth']
-                        })
+                        try:
+                            start_time = pd.to_datetime(row['Arrival_at_Berth'])
+                            end_time = pd.to_datetime(row['Predicted_Departure'])
+                            
+                            timeline_data.append({
+                                'Berth': berth,
+                                'Vessel': row['Vessel_Name'],
+                                'Start': start_time,
+                                'End': end_time,
+                                'Duration': float(row['Predicted_Hours_at_Berth'])
+                            })
+                        except Exception as e:
+                            st.error(f"Error processing row for {berth}: {str(e)}")
+                            st.write("Debug: Problematic row:", row)
+                
+                st.write("Debug: Number of timeline entries:", len(timeline_data))
                 
                 if timeline_data:
-                    timeline_df = pd.DataFrame(timeline_data)
-                    fig = px.timeline(timeline_df, x_start='Start', x_end='End', y='Berth', 
-                                   color='Duration', hover_data=['Vessel'],
-                                   title="Vessel Berth Occupancy Timeline")
-                    
-                    # Update timeline layout for better visibility
-                    fig.update_layout(
-                        plot_bgcolor='white',
-                        paper_bgcolor='white',
-                        font=dict(color='black', size=12),
-                        title_font=dict(color='black', size=14),
-                        xaxis=dict(
-                            title='Timeline',
-                            showgrid=True,
-                            gridcolor='rgba(0,0,0,0.1)',
-                            title_font=dict(color='black'),
-                            tickfont=dict(color='black')
-                        ),
-                        yaxis=dict(
-                            title='Berth',
-                            showgrid=True,
-                            gridcolor='rgba(0,0,0,0.1)',
-                            title_font=dict(color='black'),
-                            tickfont=dict(color='black')
-                        ),
-                        coloraxis_colorbar=dict(
-                            title='Duration (hours)',
-                            title_font=dict(color='black'),
-                            tickfont=dict(color='black')
+                    try:
+                        timeline_df = pd.DataFrame(timeline_data)
+                        st.write("Debug: Timeline DataFrame head:", timeline_df.head())
+                        
+                        fig = px.timeline(timeline_df, 
+                                        x_start='Start', 
+                                        x_end='End', 
+                                        y='Berth', 
+                                        color='Duration',
+                                        hover_data=['Vessel'],
+                                        title="Vessel Berth Occupancy Timeline")
+                        
+                        # Update timeline layout for better visibility
+                        fig.update_layout(
+                            plot_bgcolor='white',
+                            paper_bgcolor='white',
+                            font=dict(color='black', size=12),
+                            title_font=dict(color='black', size=14),
+                            xaxis=dict(
+                                title='Timeline',
+                                showgrid=True,
+                                gridcolor='rgba(0,0,0,0.1)',
+                                title_font=dict(color='black'),
+                                tickfont=dict(color='black')
+                            ),
+                            yaxis=dict(
+                                title='Berth',
+                                showgrid=True,
+                                gridcolor='rgba(0,0,0,0.1)',
+                                title_font=dict(color='black'),
+                                tickfont=dict(color='black')
+                            ),
+                            coloraxis_colorbar=dict(
+                                title='Duration (hours)',
+                                title_font=dict(color='black'),
+                                tickfont=dict(color='black')
+                            )
                         )
-                    )
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error creating timeline chart: {str(e)}")
+                        st.write("Debug: Timeline data structure:", timeline_data)
+                    
+
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("No timeline data available")
