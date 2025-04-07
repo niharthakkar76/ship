@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import joblib
+import numpy as np
 
 # Configure page settings and theme
 st.set_page_config(
@@ -618,23 +619,103 @@ def main():
                     'Predicted_Hours': df_processed['Predicted_Hours_at_Berth'].round(2)
                 }).sort_values('Arrival_at_Berth')
                 
+                # Add custom CSS for table styling
+                st.markdown("""
+                <style>
+                [data-testid="stDataFrame"] {
+                    background-color: white;
+                }
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"] {
+                    color: black !important;
+                    background-color: white !important;
+                }
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameHeaderCell"] {
+                    color: black !important;
+                    font-weight: bold !important;
+                    background-color: #f8f9fa !important;
+                }
+                /* Subtle color coding for different data types */
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="VCN"],
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="IMO"] {
+                    border-left: 4px solid #007bff;
+                }
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="Vessel_Name"],
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="LOA"] {
+                    border-left: 4px solid #28a745;
+                }
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="No_of_Teus"],
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="GRT"] {
+                    border-left: 4px solid #dc3545;
+                }
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="Actual_Arrival"],
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="Arrival_at_Berth"] {
+                    border-left: 4px solid #6f42c1;
+                }
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="Predicted_Departure"],
+                [data-testid="stDataFrame"] div[data-testid="stDataFrameDataCell"][data-column="Predicted_Hours"] {
+                    border-left: 4px solid #fd7e14;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
                 st.dataframe(
                     predictions_df,
                     hide_index=True,
                     use_container_width=True,
                     column_config={
-                        'VCN': st.column_config.TextColumn('VCN'),
-                        'IMO': st.column_config.NumberColumn('IMO'),
-                        'Vessel_Name': st.column_config.TextColumn('Vessel Name'),
-                        'LOA': st.column_config.NumberColumn('LOA (m)', format='%.1f'),
-                        'Port_Code': st.column_config.TextColumn('Port Code'),
-                        'Berth_Code': st.column_config.TextColumn('Berth Code'),
-                        'No_of_Teus': st.column_config.NumberColumn('TEUs'),
-                        'GRT': st.column_config.NumberColumn('GRT'),
-                        'Actual_Arrival': st.column_config.DatetimeColumn('Actual Arrival', format='DD/MM/YYYY HH:mm'),
-                        'Arrival_at_Berth': st.column_config.DatetimeColumn('Arrival at Berth', format='DD/MM/YYYY HH:mm'),
-                        'Predicted_Departure': st.column_config.DatetimeColumn('Predicted Departure', format='DD/MM/YYYY HH:mm'),
-                        'Predicted_Hours': st.column_config.NumberColumn('Predicted Hours', format='%.1f')
+                        'VCN': st.column_config.TextColumn(
+                            'VCN',
+                            help='Vessel Call Number'
+                        ),
+                        'IMO': st.column_config.NumberColumn(
+                            'IMO',
+                            help='IMO Number'
+                        ),
+                        'Vessel_Name': st.column_config.TextColumn(
+                            'Vessel Name',
+                            help='Name of the Vessel'
+                        ),
+                        'LOA': st.column_config.NumberColumn(
+                            'LOA (m)',
+                            help='Length Overall in meters',
+                            format='%.1f'
+                        ),
+                        'Port_Code': st.column_config.TextColumn(
+                            'Port Code',
+                            help='Port Identifier'
+                        ),
+                        'Berth_Code': st.column_config.TextColumn(
+                            'Berth Code',
+                            help='Berth Identifier'
+                        ),
+                        'No_of_Teus': st.column_config.NumberColumn(
+                            'TEUs',
+                            help='Number of Twenty-foot Equivalent Units'
+                        ),
+                        'GRT': st.column_config.NumberColumn(
+                            'GRT',
+                            help='Gross Registered Tonnage'
+                        ),
+                        'Actual_Arrival': st.column_config.DatetimeColumn(
+                            'Actual Arrival',
+                            help='Actual arrival time at port',
+                            format='DD/MM/YYYY HH:mm'
+                        ),
+                        'Arrival_at_Berth': st.column_config.DatetimeColumn(
+                            'Arrival at Berth',
+                            help='Time of arrival at berth',
+                            format='DD/MM/YYYY HH:mm'
+                        ),
+                        'Predicted_Departure': st.column_config.DatetimeColumn(
+                            'Predicted Departure',
+                            help='Predicted departure time',
+                            format='DD/MM/YYYY HH:mm'
+                        ),
+                        'Predicted_Hours': st.column_config.NumberColumn(
+                            'Predicted Hours',
+                            help='Predicted duration at berth',
+                            format='%.1f'
+                        )
                     }
                 )
             
@@ -643,8 +724,23 @@ def main():
                 
                 # Prepare data
                 df_analysis = df_processed.copy()
-                df_analysis['size_group'] = pd.qcut(df_analysis['vessel_size_factor'], q=10, labels=['G'+str(i) for i in range(1,11)])
-                df_analysis['density_group'] = pd.qcut(df_analysis['cargo_density'], q=10, labels=['G'+str(i) for i in range(1,11)])
+                # Create size groups using rank-based approach
+                df_analysis['size_rank'] = df_analysis['vessel_size_factor'].rank(method='first')
+                total_rows = len(df_analysis)
+                df_analysis['size_group'] = pd.cut(df_analysis['size_rank'],
+                                                  bins=[0, total_rows/4, total_rows/2, 3*total_rows/4, total_rows],
+                                                  labels=['Small', 'Medium', 'Large', 'Very Large'],
+                                                  include_lowest=True)
+                
+                # Create density groups using rank-based approach
+                df_analysis['density_rank'] = df_analysis['cargo_density'].rank(method='first')
+                df_analysis['density_group'] = pd.cut(df_analysis['density_rank'],
+                                                    bins=[0, total_rows/4, total_rows/2, 3*total_rows/4, total_rows],
+                                                    labels=['Low', 'Medium', 'High', 'Very High'],
+                                                    include_lowest=True)
+                
+                # Drop the temporary rank columns
+                df_analysis = df_analysis.drop(['size_rank', 'density_rank'], axis=1)
                 
                 # Calculate mean hours for each group and berth
                 size_means = df_analysis.groupby(['size_group', 'Berth_Code'], observed=True)['Predicted_Hours_at_Berth'].mean().reset_index()
