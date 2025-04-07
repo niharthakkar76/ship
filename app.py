@@ -481,7 +481,8 @@ def main():
 
 
                 else:
-                    st.info("No timeline data available")
+                    # Skip if no timeline data
+                    pass
             
             with tab4:
                 st.subheader("Future Berth Occupancy Forecast (7-14 Days)")
