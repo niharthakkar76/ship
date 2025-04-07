@@ -105,12 +105,119 @@ st.markdown("""
             border-right: 1px solid #E2E8F0 !important;
         }
         
-        /* Tables */
-        .table {
+        /* Tables and DataFrames - General */
+        div[data-testid="stTable"] table,
+        div[data-testid="stDataFrame"] table,
+        .dataframe,
+        .streamlit-table {
             background-color: #FFFFFF !important;
-            color: #2C3E50 !important;
+            color: #000000 !important;
             border-radius: 8px !important;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+            border: 1px solid #E2E8F0 !important;
+            width: 100% !important;
+        }
+
+        /* Reset any default table styling */
+        div[data-testid="stTable"] table *,
+        div[data-testid="stDataFrame"] table *,
+        .dataframe *,
+        .streamlit-table * {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+        }
+
+        /* Force white background on all table containers */
+        div[data-testid="stTable"],
+        div[data-testid="stDataFrame"],
+        div[data-testid="stDataFrame"] > div,
+        div[data-testid="stTable"] > div,
+        [data-testid="stDataFrame"] div[data-testid="stDataFrameContainer"],
+        .element-container [data-testid="stDataFrame"],
+        .element-container [data-testid="stTable"] {
+            background-color: #FFFFFF !important;
+        }
+        
+        /* All Table Headers */
+        div[data-testid="stTable"] th,
+        div[data-testid="stDataFrame"] th,
+        .dataframe thead th,
+        .dataframe tbody tr th,
+        [data-testid="stDataFrame"] [role="columnheader"],
+        div[class*="Toastify"] div[role="columnheader"],
+        div[class*="Table"] div[role="columnheader"],
+        .stDataFrame thead tr th {
+            background-color: #F8FAFC !important;
+            color: #000000 !important;
+            font-weight: 600 !important;
+            text-align: left !important;
+            padding: 12px !important;
+            border-bottom: 2px solid #E2E8F0 !important;
+            white-space: nowrap !important;
+        }
+            background-color: #F8FAFC !important;
+            color: #2C3E50 !important;
+            font-weight: 600 !important;
+            text-align: left !important;
+            padding: 12px !important;
+            border-bottom: 2px solid #E2E8F0 !important;
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            font-weight: 600 !important;
+            border-bottom: 2px solid #E2E8F0 !important;
+            padding: 8px !important;
+            text-align: left !important;
+        }
+        
+        /* All Table Cells */
+        div[data-testid="stTable"] td,
+        div[data-testid="stDataFrame"] td,
+        .dataframe tbody tr td,
+        [data-testid="stDataFrame"] [role="cell"],
+        div[class*="Toastify"] div[role="cell"],
+        div[class*="Table"] div[role="cell"],
+        .streamlit-table td,
+        .streamlit-expanderContent td,
+        .stDataFrame tbody tr td {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            padding: 12px !important;
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+            white-space: nowrap !important;
+        }
+            background-color: #FFFFFF !important;
+            color: #2C3E50 !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            padding: 12px !important;
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+        }
+        
+        /* Table Row Hover */
+        div[data-testid="stTable"] tr:hover td,
+        div[data-testid="stDataFrame"] tr:hover td,
+        .dataframe tbody tr:hover td,
+        [data-testid="stDataFrame"] [role="row"]:hover [role="cell"],
+        .stDataFrame tbody tr:hover td {
+            background-color: #F8FAFC !important;
+            color: #000000 !important;
+            transition: all 0.2s ease !important;
+        }
+            background-color: #F8FAFC !important;
+        }
+        
+        /* Table Styles Reset */
+        .dataframe {
+            border: none !important;
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+        
+        /* Remove Default Streamlit Table Styles */
+        div[data-testid="StyledFullScreenFrame"] > div > div > div > div > div {
+            background-color: #FFFFFF !important;
         }
         
         /* Make sure text is visible in all states */
@@ -599,27 +706,19 @@ def main():
                     }).sort_values('Start Time')
                     
                     st.dataframe(
-                        detailed_df,
-                        hide_index=True,
+                        detailed_df.style
+                        .set_table_styles([
+                            {'selector': 'th', 'props': [('background-color', '#FFFFFF'), ('color', '#000000')]},
+                            {'selector': 'td', 'props': [('background-color', '#FFFFFF'), ('color', '#000000')]}
+                        ])
+                        .format({
+                            'Predicted Hours': '{:.2f}',
+                            'Start Time': lambda x: x.strftime('%Y-%m-%d %H:%M') if pd.notnull(x) else '',
+                            'Lower Bound (hrs)': '{:.2f}',
+                            'Upper Bound (hrs)': '{:.2f}'
+                        }),
                         use_container_width=True,
-                        column_config={
-                            'Start Time': st.column_config.DatetimeColumn(
-                                'Start Time',
-                                format='DD/MM/YYYY HH:mm'
-                            ),
-                            'Predicted Hours': st.column_config.NumberColumn(
-                                'Predicted Hours',
-                                format='%.1f'
-                            ),
-                            'Lower Bound (hrs)': st.column_config.NumberColumn(
-                                'Lower Bound (hrs)',
-                                format='%.1f'
-                            ),
-                            'Upper Bound (hrs)': st.column_config.NumberColumn(
-                                'Upper Bound (hrs)',
-                                format='%.1f'
-                            )
-                        }
+                        hide_index=True
                     )
                 else:
                     st.info("No future predictions available")
@@ -632,7 +731,15 @@ def main():
                 # Show berth statistics
                 st.subheader("Berth-wise Statistics")
                 stats_df = pd.DataFrame.from_dict(berth_stats, orient='index')
-                st.dataframe(stats_df.round(2))
+                st.dataframe(
+                    stats_df.style
+                    .set_table_styles([
+                        {'selector': 'th', 'props': [('background-color', '#F8FAFC'), ('color', '#2C3E50')]},
+                        {'selector': 'td', 'props': [('background-color', '#FFFFFF'), ('color', '#2C3E50')]}
+                    ])
+                    .format(precision=2),
+                    use_container_width=True
+                )
                 
                 # Show vessel predictions
                 st.subheader("Vessel Schedule")
@@ -691,65 +798,37 @@ def main():
                 """, unsafe_allow_html=True)
 
                 st.dataframe(
-                    predictions_df,
-                    hide_index=True,
+                    predictions_df.style
+                    .set_table_styles([
+                        {'selector': 'th', 'props': [('background-color', '#F8FAFC'), ('color', '#2C3E50')]},
+                        {'selector': 'td', 'props': [('background-color', '#FFFFFF'), ('color', '#2C3E50')]}
+                    ])
+                    .format({
+                        'VCN': lambda x: str(x),
+                        'IMO': lambda x: str(x),
+                        'LOA': '{:.1f}',
+                        'GRT': '{:.0f}',
+                        'No_of_Teus': '{:.0f}',
+                        'Actual_Arrival': lambda x: x.strftime('%Y-%m-%d %H:%M') if pd.notnull(x) else '',
+                        'Arrival_at_Berth': lambda x: x.strftime('%Y-%m-%d %H:%M') if pd.notnull(x) else '',
+                        'Predicted_Departure': lambda x: x.strftime('%Y-%m-%d %H:%M') if pd.notnull(x) else ''
+                    }),
                     use_container_width=True,
+                    hide_index=True,
                     column_config={
-                        'VCN': st.column_config.TextColumn(
-                            'VCN',
-                            help='Vessel Call Number'
-                        ),
-                        'IMO': st.column_config.NumberColumn(
-                            'IMO',
-                            help='IMO Number'
-                        ),
-                        'Vessel_Name': st.column_config.TextColumn(
-                            'Vessel Name',
-                            help='Name of the Vessel'
-                        ),
-                        'LOA': st.column_config.NumberColumn(
-                            'LOA (m)',
-                            help='Length Overall in meters',
-                            format='%.1f'
-                        ),
-                        'Port_Code': st.column_config.TextColumn(
-                            'Port Code',
-                            help='Port Identifier'
-                        ),
-                        'Berth_Code': st.column_config.TextColumn(
-                            'Berth Code',
-                            help='Berth Identifier'
-                        ),
-                        'No_of_Teus': st.column_config.NumberColumn(
-                            'TEUs',
-                            help='Number of Twenty-foot Equivalent Units'
-                        ),
-                        'GRT': st.column_config.NumberColumn(
-                            'GRT',
-                            help='Gross Registered Tonnage'
-                        ),
-                        'Actual_Arrival': st.column_config.DatetimeColumn(
-                            'Actual Arrival',
-                            help='Actual arrival time at port',
-                            format='DD/MM/YYYY HH:mm'
-                        ),
-                        'Arrival_at_Berth': st.column_config.DatetimeColumn(
-                            'Arrival at Berth',
-                            help='Time of arrival at berth',
-                            format='DD/MM/YYYY HH:mm'
-                        ),
-                        'Predicted_Departure': st.column_config.DatetimeColumn(
-                            'Predicted Departure',
-                            help='Predicted departure time',
-                            format='DD/MM/YYYY HH:mm'
-                        ),
-                        'Predicted_Hours': st.column_config.NumberColumn(
-                            'Predicted Hours',
-                            help='Predicted duration at berth',
-                            format='%.1f'
-                        )
+                        'VCN': st.column_config.TextColumn('VCN', help='Vessel Call Number'),
+                        'IMO': st.column_config.TextColumn('IMO', help='IMO Number'),
+                        'Vessel_Name': st.column_config.TextColumn('Vessel Name', help='Name of the Vessel'),
+                        'LOA': st.column_config.NumberColumn('LOA (m)', help='Length Overall in meters', format='%.1f'),
+                        'Port_Code': st.column_config.TextColumn('Port Code', help='Port Identifier'),
+                        'Berth_Code': st.column_config.TextColumn('Berth Code', help='Berth Identifier'),
+                        'No_of_Teus': st.column_config.NumberColumn('TEUs', help='Number of Twenty-foot Equivalent Units'),
+                        'GRT': st.column_config.NumberColumn('GRT', help='Gross Registered Tonnage'),
+                        'Actual_Arrival': st.column_config.DatetimeColumn('Actual Arrival', help='Actual arrival time at port', format='DD/MM/YYYY HH:mm'),
+                        'Arrival_at_Berth': st.column_config.DatetimeColumn('Arrival at Berth', help='Time of arrival at berth', format='DD/MM/YYYY HH:mm'),
+                        'Predicted_Departure': st.column_config.DatetimeColumn('Predicted Departure', help='Predicted departure time', format='DD/MM/YYYY HH:mm')
                     }
-                )
+                )   
             
             with tab3:
                 st.subheader("Berth Performance Insights")
@@ -839,11 +918,21 @@ def main():
                 st.markdown("### Daily Berth Statistics")
                 stats_df = daily_df[['Date', 'Total_Berth_Hours', 'Available_Hours', 'Utilization', 'Num_Berths', 'Vessel_Count', 'Average_Gap']]
                 stats_df.columns = ['Date', 'Total Berth Hours', 'Available Hours', 'Utilization (%)', 'Number of Berths', 'Number of Vessels', 'Average Gap (hrs)']
-                st.dataframe(stats_df.style.format({
-                    'Total Berth Hours': '{:.2f}',
-                    'Utilization (%)': '{:.2f}',
-                    'Average Gap (hrs)': '{:.2f}'
-                }), use_container_width=True)
+                st.dataframe(
+                    stats_df.style
+                    .set_table_styles([
+                        {'selector': 'th', 'props': [('background-color', '#F8FAFC'), ('color', '#2C3E50')]},
+                        {'selector': 'td', 'props': [('background-color', '#FFFFFF'), ('color', '#2C3E50')]}
+                    ])
+                    .format({
+                        'Total Berth Hours': '{:.2f}',
+                        'Utilization (%)': '{:.2f}',
+                        'Average Gap (hrs)': '{:.2f}',
+                        'Date': lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ''
+                    }),
+                    use_container_width=True,
+                    hide_index=True
+                )
                 
                 # Create visualizations
                 st.markdown("### Utilization and Gap Trends")
