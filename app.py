@@ -138,9 +138,11 @@ def main():
     model = model_info['model']
     features = model_info['features']
     
-    # Handle potential compatibility issues with newer scikit-learn versions
-    if hasattr(model, 'monotonic_cst_'):
-        model.monotonic_cst = model.monotonic_cst_
+    # Handle compatibility with newer scikit-learn versions
+    if hasattr(model, 'estimators_'):
+        for estimator in model.estimators_:
+            if not hasattr(estimator, 'monotonic_cst'):
+                estimator.monotonic_cst = None
     
     uploaded_file = st.file_uploader("Upload Vessel Data (CSV)", type="csv")
     
