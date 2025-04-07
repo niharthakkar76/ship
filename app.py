@@ -392,48 +392,66 @@ def main():
                 
                 # Show timeline
                 st.subheader("Berth Timeline")
+                
+                # Prepare timeline data
                 timeline_data = []
-                
-                for berth in berth_stats.keys():
-                    berth_df = df_processed[df_processed['Berth_Code'] == berth]
-                    for _, row in berth_df.iterrows():
-                        try:
-                            start_time = pd.to_datetime(row['Arrival_at_Berth'])
-                            end_time = pd.to_datetime(row['Predicted_Departure'])
-                            
-                            timeline_data.append({
-                                'Berth': berth,
-                                'Vessel': row['Vessel_Name'],
-                                'Start': start_time,
-                                'End': end_time,
-                                'Duration': float(row['Predicted_Hours_at_Berth'])
-                            })
-                        except Exception as e:
-                            st.error(f"Error processing vessel data: {str(e)}")
-                
-                if timeline_data:
-                    try:
+                try:
+                    # Convert datetime columns first
+                    df_processed['Arrival_at_Berth'] = pd.to_datetime(df_processed['Arrival_at_Berth'])
+                    df_processed['Predicted_Departure'] = pd.to_datetime(df_processed['Predicted_Departure'])
+                    
+                    # Sort by berth and arrival time
+                    df_timeline = df_processed.sort_values(['Berth_Code', 'Arrival_at_Berth'])
+                    
+                    for berth in sorted(df_timeline['Berth_Code'].unique()):
+                        berth_df = df_timeline[df_timeline['Berth_Code'] == berth]
+                        for _, row in berth_df.iterrows():
+                            if pd.notna(row['Arrival_at_Berth']) and pd.notna(row['Predicted_Departure']):
+                                timeline_data.append({
+                                    'Berth': berth,
+                                    'Vessel': row['Vessel_Name'],
+                                    'Start': row['Arrival_at_Berth'],
+                                    'End': row['Predicted_Departure'],
+                                    'Duration': float(row['Predicted_Hours_at_Berth'])
+                                })
+                    
+                    if timeline_data:
+                        # Create timeline visualization
                         timeline_df = pd.DataFrame(timeline_data)
-                        fig = px.timeline(timeline_df, 
-                                        x_start='Start', 
-                                        x_end='End', 
-                                        y='Berth', 
-                                        color='Duration',
-                                        hover_data=['Vessel'],
-                                        title="Vessel Berth Occupancy Timeline")
                         
-                        # Update timeline layout for better visibility
+                        # Debug info
+                        st.write(f"Number of timeline entries: {len(timeline_df)}")
+                        st.write("Sample of timeline data:")
+                        st.write(timeline_df.head())
+                        
+                        # Create Gantt chart
+                        fig = px.timeline(
+                            timeline_df,
+                            x_start='Start',
+                            x_end='End',
+                            y='Berth',
+                            color='Duration',
+                            hover_data=['Vessel'],
+                            title="Vessel Berth Occupancy Timeline",
+                            color_continuous_scale='Viridis'
+                        )
+                        
+                        # Update timeline layout
                         fig.update_layout(
                             plot_bgcolor='white',
                             paper_bgcolor='white',
                             font=dict(color='black', size=12),
-                            title_font=dict(color='black', size=14),
+                            title=dict(
+                                text="Vessel Berth Occupancy Timeline",
+                                font=dict(color='black', size=16)
+                            ),
                             xaxis=dict(
                                 title='Timeline',
                                 showgrid=True,
                                 gridcolor='rgba(0,0,0,0.1)',
                                 title_font=dict(color='black'),
-                                tickfont=dict(color='black')
+                                tickfont=dict(color='black'),
+                                rangeslider_visible=True
                             ),
                             yaxis=dict(
                                 title='Berth',
@@ -446,12 +464,19 @@ def main():
                                 title='Duration (hours)',
                                 title_font=dict(color='black'),
                                 tickfont=dict(color='black')
-                            )
+                            ),
+                            height=400  # Fixed height for better visibility
                         )
+                        
+                        # Show the timeline
                         st.plotly_chart(fig, use_container_width=True, key="berth_timeline")
-                    except Exception as e:
-                        st.error(f"Error creating timeline chart: {str(e)}")
-                        st.write("Debug: Timeline data structure:", timeline_data)
+                    else:
+                        st.warning("No valid timeline data available.")
+                        
+                except Exception as e:
+                    st.error(f"Error creating timeline: {str(e)}")
+                    st.exception(e)
+
                     
 
 
