@@ -627,48 +627,15 @@ def main():
             with tab2:
                 st.subheader("Berth Analysis")
                 
-                # Show detailed stats table
+
+                
+                # Show berth statistics
                 st.subheader("Berth-wise Statistics")
                 stats_df = pd.DataFrame.from_dict(berth_stats, orient='index')
                 st.dataframe(stats_df.round(2))
                 
-                # Show vessel predictions table
-                st.subheader("Vessel Predictions")
-                predictions_df = pd.DataFrame({
-                    'VCN': df['VCN'],
-                    'IMO': df['IMO'],
-                    'Vessel_Name': df_processed['Vessel_Name'],
-                    'LOA': df['LOA'],
-                    'Port_Code': df['Port_Code'],
-                    'Berth_Code': df_processed['Berth_Code'],
-                    'No_of_Teus': df['No_of_Teus'],
-                    'GRT': df['GRT'],
-                    'Actual_Arrival': pd.to_datetime(df['Actual_Arrival']),
-                    'Arrival_at_Berth': pd.to_datetime(df['Arrival_at_Berth']),
-                    'Predicted_Departure': df_processed['Predicted_Departure'],
-                    'Predicted_Hours': df_processed['Predicted_Hours_at_Berth'].round(2)
-                }).sort_values('Arrival_at_Berth')
-                st.dataframe(predictions_df)
-                
-                # Add explanation
-                st.markdown("""
-                <div style='color: black; font-family: Arial;'>
-                <strong>Analysis Insights:</strong>
-                <ul>
-                    <li>Left chart shows daily berth utilization percentage trend</li>
-                    <li>Right chart shows average gap between vessels per day</li>
-                    <li>Both metrics help identify efficiency patterns and potential bottlenecks</li>
-                </ul>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Show detailed stats table
-                st.subheader("Detailed Statistics")
-                stats_df = pd.DataFrame.from_dict(berth_stats, orient='index')
-                st.dataframe(stats_df.round(2))
-                
-                # Show vessel predictions table
-                st.subheader("Vessel Predictions")
+                # Show vessel predictions
+                st.subheader("Vessel Schedule")
                 predictions_df = pd.DataFrame({
                     'VCN': df['VCN'],
                     'IMO': df['IMO'],
@@ -980,17 +947,7 @@ def main():
                     
                     st.plotly_chart(fig2, use_container_width=True)
                 
-                # Add explanation
-                st.markdown("""
-                <div style='color: black; font-family: Arial;'>
-                <strong>Analysis Insights:</strong>
-                <ul>
-                    <li>Left chart shows daily berth utilization percentage trend</li>
-                    <li>Right chart shows average gap between vessels per day</li>
-                    <li>Both metrics help identify efficiency patterns and potential bottlenecks</li>
-                </ul>
-                </div>
-                """, unsafe_allow_html=True)
+
                 
 
                     
