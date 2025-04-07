@@ -767,101 +767,163 @@ def main():
                 # Drop the temporary rank columns
                 df_analysis = df_analysis.drop(['size_rank', 'density_rank'], axis=1)
                 
-                # Calculate mean hours for each group and berth
+                # Calculate metrics
+                # 1. Size impact on berth time
                 size_means = df_analysis.groupby(['size_group', 'Berth_Code'], observed=True)['Predicted_Hours_at_Berth'].mean().reset_index()
-                density_means = df_analysis.groupby(['density_group', 'Berth_Code'], observed=True)['Predicted_Hours_at_Berth'].mean().reset_index()
                 
-                # Create simple line charts
+                # 2. Density impact on turnaround time
+                df_analysis['Turnaround_Time'] = (pd.to_datetime(df_analysis['Predicted_Departure']) - 
+                                                pd.to_datetime(df_analysis['Actual_Arrival'])).dt.total_seconds() / 3600
+                
+                density_stats = df_analysis.groupby('density_group', observed=True).agg({
+                    'Turnaround_Time': ['mean', 'std', 'count']
+                }).reset_index()
+                density_stats.columns = ['density_group', 'mean_time', 'std_time', 'count']
+                
+                # Create visualizations
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Create bar chart with dark colors
+                    # Create scatter plot with lines for size impact
                     colors = ['#1f77b4', '#d62728', '#2ca02c', '#9467bd', '#8c564b', '#e377c2']
-                    fig1 = px.bar(size_means,
-                        x='size_group',
-                        y='Predicted_Hours_at_Berth',
-                        color='Berth_Code',
-                        barmode='group',
-                        title='Vessel Size Impact on Berth Time',
-                        color_discrete_sequence=colors,
-                        labels={
-                            'size_group': 'Vessel Size Groups (Smaller → Larger)',
-                            'Predicted_Hours_at_Berth': 'Average Hours at Berth',
-                            'Berth_Code': 'Berth'
-                        }
-                    )
+                    fig1 = go.Figure()
                     
-                    # Update bar appearance
-                    fig1.update_traces(
-                        marker_line_width=2,
-                        marker_line_color='black',
-                        opacity=1
-                    )
+                    # Add traces for each berth
+                    for berth in size_means['Berth_Code'].unique():
+                        berth_data = size_means[size_means['Berth_Code'] == berth]
+                        fig1.add_trace(go.Scatter(
+                            x=berth_data['size_group'],
+                            y=berth_data['Predicted_Hours_at_Berth'],
+                            name=berth,
+                            mode='lines+markers',
+                            line=dict(width=2),
+                            marker=dict(
+                                size=12,
+                                line=dict(width=2, color='black')
+                            )
+                        ))
                     
-                    # Update layout with black text
+                    # Update layout with darker text
                     fig1.update_layout(
+                        title=dict(
+                            text='Vessel Size Impact on Berth Time',
+                            font=dict(size=18, color='black', family='Arial Black')
+                        ),
                         plot_bgcolor='white',
                         paper_bgcolor='white',
-                        font=dict(size=14, color='black'),
+                        font=dict(size=14, color='black', family='Arial'),
                         showlegend=True,
                         legend=dict(
-                            title=dict(text='Berth', font=dict(color='black', size=14)),
-                            font=dict(color='black', size=12)
+                            title=dict(text='Berth', font=dict(size=14, color='black', family='Arial Black')),
+                            font=dict(size=12, color='black'),
+                            bgcolor='rgba(255,255,255,0.8)',
+                            bordercolor='black',
+                            borderwidth=1
                         ),
-                        title=dict(font=dict(color='black', size=16)),
-                        xaxis=dict(title_font=dict(color='black', size=14), tickfont=dict(color='black', size=12)),
-                        yaxis=dict(title_font=dict(color='black', size=14), tickfont=dict(color='black', size=12))
+                        xaxis=dict(
+                            title='Vessel Size Groups',
+                            title_font=dict(size=14, color='black', family='Arial Black'),
+                            tickfont=dict(size=12, color='black'),
+                            showgrid=False,
+                            showline=True,
+                            linewidth=1,
+                            linecolor='black'
+                        ),
+                        yaxis=dict(
+                            title='Average Hours at Berth',
+                            title_font=dict(size=14, color='black', family='Arial Black'),
+                            tickfont=dict(size=12, color='black'),
+                            showgrid=True,
+                            gridcolor='rgba(0,0,0,0.1)',
+                            showline=True,
+                            linewidth=1,
+                            linecolor='black'
+                        )
                     )
-                    
-                    # Add grid for y-axis only
-                    fig1.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#CCCCCC')
-                    fig1.update_xaxes(showgrid=False)
                     
                     st.plotly_chart(fig1, use_container_width=True)
                 
                 with col2:
-                    # Create bar chart with dark colors
-                    fig2 = px.bar(density_means,
-                        x='density_group',
-                        y='Predicted_Hours_at_Berth',
-                        color='Berth_Code',
-                        barmode='group',
-                        title='Cargo Density Impact on Berth Time',
-                        color_discrete_sequence=colors,  # Use same colors as fig1
-                        labels={
-                            'density_group': 'Cargo Density Groups (Lower → Higher)',
-                            'Predicted_Hours_at_Berth': 'Average Hours at Berth',
-                            'Berth_Code': 'Berth'
-                        }
-                    )
+                    # Create scatter plot with lines for turnaround time
+                    fig2 = go.Figure()
                     
-                    # Update bar appearance
-                    fig2.update_traces(
-                        marker_line_width=2,
-                        marker_line_color='black',
-                        opacity=1
-                    )
+                    # Add scatter plot with error bars
+                    fig2.add_trace(go.Scatter(
+                        x=density_stats['density_group'],
+                        y=density_stats['mean_time'],
+                        mode='lines+markers',
+                        name='Average Turnaround Time',
+                        line=dict(width=2, color='#1f77b4'),
+                        marker=dict(
+                            size=12,
+                            color='#1f77b4',
+                            line=dict(width=2, color='black')
+                        ),
+                        error_y=dict(
+                            type='data',
+                            array=density_stats['std_time'],
+                            visible=True,
+                            color='black',
+                            thickness=1.5,
+                            width=10
+                        )
+                    ))
                     
-                    # Update layout with black text
+                    # Add sample size annotations
+                    for i, row in density_stats.iterrows():
+                        fig2.add_annotation(
+                            x=row['density_group'],
+                            y=row['mean_time'],
+                            text=f'n={int(row["count"])}',
+                            yshift=20,
+                            showarrow=False,
+                            font=dict(size=12, color='black', family='Arial')
+                        )
+                    
+                    # Update layout with darker text
                     fig2.update_layout(
+                        title=dict(
+                            text='Cargo Density Impact on Total Turnaround Time',
+                            font=dict(size=18, color='black', family='Arial Black')
+                        ),
                         plot_bgcolor='white',
                         paper_bgcolor='white',
-                        font=dict(size=14, color='black'),
-                        showlegend=True,
-                        legend=dict(
-                            title=dict(text='Berth', font=dict(color='black', size=14)),
-                            font=dict(color='black', size=12)
+                        font=dict(size=14, color='black', family='Arial'),
+                        showlegend=False,
+                        xaxis=dict(
+                            title='Cargo Density Groups',
+                            title_font=dict(size=14, color='black', family='Arial Black'),
+                            tickfont=dict(size=12, color='black'),
+                            showgrid=False,
+                            showline=True,
+                            linewidth=1,
+                            linecolor='black'
                         ),
-                        title=dict(font=dict(color='black', size=16)),
-                        xaxis=dict(title_font=dict(color='black', size=14), tickfont=dict(color='black', size=12)),
-                        yaxis=dict(title_font=dict(color='black', size=14), tickfont=dict(color='black', size=12))
+                        yaxis=dict(
+                            title='Average Turnaround Time (hours)',
+                            title_font=dict(size=14, color='black', family='Arial Black'),
+                            tickfont=dict(size=12, color='black'),
+                            showgrid=True,
+                            gridcolor='rgba(0,0,0,0.1)',
+                            showline=True,
+                            linewidth=1,
+                            linecolor='black'
+                        )
                     )
                     
-                    # Add grid for y-axis only
-                    fig2.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#CCCCCC')
-                    fig2.update_xaxes(showgrid=False)
-                    
                     st.plotly_chart(fig2, use_container_width=True)
+                    
+                    # Add explanation with darker text
+                    st.markdown("""
+                    <div style='color: black; font-family: Arial;'>
+                    <strong>Analysis Insights:</strong>
+                    <ul>
+                        <li>Left chart shows how vessel size affects berth time for each berth</li>
+                        <li>Right chart shows total turnaround time by cargo density</li>
+                        <li>Error bars show standard deviation, 'n' shows number of vessels in each group</li>
+                    </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
         except Exception as e:
             st.error(f"Error processing data: {str(e)}")
