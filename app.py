@@ -604,14 +604,39 @@ def main():
                 
                 st.subheader("Vessel Predictions")
                 predictions_df = pd.DataFrame({
+                    'VCN': df['VCN'],
+                    'IMO': df['IMO'],
                     'Vessel_Name': df_processed['Vessel_Name'],
+                    'LOA': df['LOA'],
+                    'Port_Code': df['Port_Code'],
                     'Berth_Code': df_processed['Berth_Code'],
-                    'Arrival_Time': df_processed['Arrival_at_Berth'],
+                    'No_of_Teus': df['No_of_Teus'],
+                    'GRT': df['GRT'],
+                    'Actual_Arrival': pd.to_datetime(df['Actual_Arrival']),
+                    'Arrival_at_Berth': pd.to_datetime(df['Arrival_at_Berth']),
                     'Predicted_Departure': df_processed['Predicted_Departure'],
                     'Predicted_Hours': df_processed['Predicted_Hours_at_Berth'].round(2)
-                }).sort_values('Arrival_Time')
+                }).sort_values('Arrival_at_Berth')
                 
-                st.dataframe(predictions_df)
+                st.dataframe(
+                    predictions_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        'VCN': st.column_config.TextColumn('VCN'),
+                        'IMO': st.column_config.NumberColumn('IMO'),
+                        'Vessel_Name': st.column_config.TextColumn('Vessel Name'),
+                        'LOA': st.column_config.NumberColumn('LOA (m)', format='%.1f'),
+                        'Port_Code': st.column_config.TextColumn('Port Code'),
+                        'Berth_Code': st.column_config.TextColumn('Berth Code'),
+                        'No_of_Teus': st.column_config.NumberColumn('TEUs'),
+                        'GRT': st.column_config.NumberColumn('GRT'),
+                        'Actual_Arrival': st.column_config.DatetimeColumn('Actual Arrival', format='DD/MM/YYYY HH:mm'),
+                        'Arrival_at_Berth': st.column_config.DatetimeColumn('Arrival at Berth', format='DD/MM/YYYY HH:mm'),
+                        'Predicted_Departure': st.column_config.DatetimeColumn('Predicted Departure', format='DD/MM/YYYY HH:mm'),
+                        'Predicted_Hours': st.column_config.NumberColumn('Predicted Hours', format='%.1f')
+                    }
+                )
             
             with tab3:
                 st.subheader("Vessel Analysis and Insights")
