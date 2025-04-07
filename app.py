@@ -564,8 +564,8 @@ def main():
                 df_analysis['density_group'] = pd.qcut(df_analysis['cargo_density'], q=10, labels=['G'+str(i) for i in range(1,11)])
                 
                 # Calculate mean hours for each group and berth
-                size_means = df_analysis.groupby(['size_group', 'Berth_Code'])['Predicted_Hours_at_Berth'].mean().reset_index()
-                density_means = df_analysis.groupby(['density_group', 'Berth_Code'])['Predicted_Hours_at_Berth'].mean().reset_index()
+                size_means = df_analysis.groupby(['size_group', 'Berth_Code'], observed=True)['Predicted_Hours_at_Berth'].mean().reset_index()
+                density_means = df_analysis.groupby(['density_group', 'Berth_Code'], observed=True)['Predicted_Hours_at_Berth'].mean().reset_index()
                 
                 # Create simple line charts
                 col1, col2 = st.columns(2)
