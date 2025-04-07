@@ -393,14 +393,8 @@ def main():
                 st.subheader("Berth Timeline")
                 timeline_data = []
                 
-                # Debug info
-                st.write("Debug: Number of berths:", len(berth_stats.keys()))
-                st.write("Debug: Berths:", list(berth_stats.keys()))
-                
                 for berth in berth_stats.keys():
                     berth_df = df_processed[df_processed['Berth_Code'] == berth]
-                    st.write(f"Debug: Number of vessels for {berth}:", len(berth_df))
-                    
                     for _, row in berth_df.iterrows():
                         try:
                             start_time = pd.to_datetime(row['Arrival_at_Berth'])
@@ -414,16 +408,11 @@ def main():
                                 'Duration': float(row['Predicted_Hours_at_Berth'])
                             })
                         except Exception as e:
-                            st.error(f"Error processing row for {berth}: {str(e)}")
-                            st.write("Debug: Problematic row:", row)
-                
-                st.write("Debug: Number of timeline entries:", len(timeline_data))
+                            st.error(f"Error processing vessel data: {str(e)}")
                 
                 if timeline_data:
                     try:
                         timeline_df = pd.DataFrame(timeline_data)
-                        st.write("Debug: Timeline DataFrame head:", timeline_df.head())
-                        
                         fig = px.timeline(timeline_df, 
                                         x_start='Start', 
                                         x_end='End', 
@@ -567,7 +556,9 @@ def main():
                             borderwidth=1,
                             borderpad=4
                         )
-
+                    
+                    # Display the future forecast chart
+                    st.plotly_chart(fig, use_container_width=True, key="future_forecast")
                     
                     # Display detailed predictions table
                     st.subheader("Detailed Future Predictions")
