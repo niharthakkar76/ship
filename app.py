@@ -458,7 +458,7 @@ def main():
                                 tickfont=dict(color='black')
                             )
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, use_container_width=True, key="berth_timeline")
                     except Exception as e:
                         st.error(f"Error creating timeline chart: {str(e)}")
                         st.write("Debug: Timeline data structure:", timeline_data)
@@ -567,8 +567,7 @@ def main():
                             borderwidth=1,
                             borderpad=4
                         )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
+
                     
                     # Display detailed predictions table
                     st.subheader("Detailed Future Predictions")
