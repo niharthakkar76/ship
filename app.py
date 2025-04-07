@@ -453,7 +453,7 @@ def main():
                         st.write("Debug: Timeline data structure:", timeline_data)
                     
 
-                    st.plotly_chart(fig, use_container_width=True)
+
                 else:
                     st.info("No timeline data available")
             
