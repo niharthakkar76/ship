@@ -627,144 +627,28 @@ def main():
             with tab2:
                 st.subheader("Berth Analysis")
                 
-                # Calculate daily metrics
-                df_processed['Date'] = pd.to_datetime(df_processed['Arrival_at_Berth']).dt.date
+                # Show detailed stats table
+                st.subheader("Berth-wise Statistics")
+                stats_df = pd.DataFrame.from_dict(berth_stats, orient='index')
+                st.dataframe(stats_df.round(2))
                 
-                # Calculate daily utilization for each berth
-                daily_stats = []
-                unique_dates = sorted(df_processed['Date'].unique())
-                
-                for date in unique_dates:
-                    date_df = df_processed[df_processed['Date'] == date]
-                    date_stats = {'Date': date}
-                    
-                    # Calculate utilization
-                    total_hours = 0
-                    total_gap_hours = 0
-                    vessel_count = 0
-                    
-                    for berth in df_processed['Berth_Code'].unique():
-                        berth_df = date_df[date_df['Berth_Code'] == berth]
-                        if not berth_df.empty:
-                            hours = berth_df['Predicted_Hours_at_Berth'].sum()
-                            total_hours += hours
-                            vessel_count += len(berth_df)
-                            
-                            # Calculate gaps between vessels
-                            if len(berth_df) > 1:
-                                berth_df = berth_df.sort_values('Arrival_at_Berth')
-                                departures = pd.to_datetime(berth_df['Predicted_Departure'].iloc[:-1])
-                                next_arrivals = pd.to_datetime(berth_df['Arrival_at_Berth'].iloc[1:])
-                                gaps = (next_arrivals - departures).dt.total_seconds() / 3600
-                                total_gap_hours += gaps.sum()
-                    
-                    date_stats['Utilization'] = (total_hours / (24 * len(df_processed['Berth_Code'].unique()))) * 100
-                    date_stats['Average_Gap'] = total_gap_hours / vessel_count if vessel_count > 0 else 0
-                    date_stats['Vessel_Count'] = vessel_count
-                    daily_stats.append(date_stats)
-                
-                daily_df = pd.DataFrame(daily_stats)
-                
-                # Create visualizations
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Create utilization trend chart
-                    fig1 = go.Figure()
-                    
-                    fig1.add_trace(go.Scatter(
-                        x=daily_df['Date'],
-                        y=daily_df['Utilization'],
-                        mode='lines+markers',
-                        name='Daily Utilization',
-                        line=dict(width=2, color='#1f77b4'),
-                        marker=dict(
-                            size=8,
-                            color='#1f77b4',
-                            line=dict(width=2, color='black')
-                        )
-                    ))
-                    
-                    fig1.update_layout(
-                        title=dict(
-                            text='Daily Berth Utilization Trend',
-                            font=dict(size=18, color='black', family='Arial Black')
-                        ),
-                        plot_bgcolor='white',
-                        paper_bgcolor='white',
-                        font=dict(size=14, color='black', family='Arial'),
-                        showlegend=False,
-                        xaxis=dict(
-                            title='Date',
-                            title_font=dict(size=14, color='black', family='Arial Black'),
-                            tickfont=dict(size=12, color='black'),
-                            showgrid=False,
-                            showline=True,
-                            linewidth=1,
-                            linecolor='black'
-                        ),
-                        yaxis=dict(
-                            title='Utilization (%)',
-                            title_font=dict(size=14, color='black', family='Arial Black'),
-                            tickfont=dict(size=12, color='black'),
-                            showgrid=True,
-                            gridcolor='rgba(0,0,0,0.1)',
-                            showline=True,
-                            linewidth=1,
-                            linecolor='black'
-                        )
-                    )
-                    
-                    st.plotly_chart(fig1, use_container_width=True)
-                
-                with col2:
-                    # Create average gap trend chart
-                    fig2 = go.Figure()
-                    
-                    fig2.add_trace(go.Scatter(
-                        x=daily_df['Date'],
-                        y=daily_df['Average_Gap'],
-                        mode='lines+markers',
-                        name='Average Gap',
-                        line=dict(width=2, color='#2ca02c'),
-                        marker=dict(
-                            size=8,
-                            color='#2ca02c',
-                            line=dict(width=2, color='black')
-                        )
-                    ))
-                    
-                    fig2.update_layout(
-                        title=dict(
-                            text='Daily Average Gap Between Vessels',
-                            font=dict(size=18, color='black', family='Arial Black')
-                        ),
-                        plot_bgcolor='white',
-                        paper_bgcolor='white',
-                        font=dict(size=14, color='black', family='Arial'),
-                        showlegend=False,
-                        xaxis=dict(
-                            title='Date',
-                            title_font=dict(size=14, color='black', family='Arial Black'),
-                            tickfont=dict(size=12, color='black'),
-                            showgrid=False,
-                            showline=True,
-                            linewidth=1,
-                            linecolor='black'
-                        ),
-                        yaxis=dict(
-                            title='Average Gap (hours)',
-                            title_font=dict(size=14, color='black', family='Arial Black'),
-                            tickfont=dict(size=12, color='black'),
-                            showgrid=True,
-                            gridcolor='rgba(0,0,0,0.1)',
-                            showline=True,
-                            linewidth=1,
-                            linecolor='black'
-                        )
-                    )
-                    
-                    st.plotly_chart(fig2, use_container_width=True)
+                # Show vessel predictions table
+                st.subheader("Vessel Predictions")
+                predictions_df = pd.DataFrame({
+                    'VCN': df['VCN'],
+                    'IMO': df['IMO'],
+                    'Vessel_Name': df_processed['Vessel_Name'],
+                    'LOA': df['LOA'],
+                    'Port_Code': df['Port_Code'],
+                    'Berth_Code': df_processed['Berth_Code'],
+                    'No_of_Teus': df['No_of_Teus'],
+                    'GRT': df['GRT'],
+                    'Actual_Arrival': pd.to_datetime(df['Actual_Arrival']),
+                    'Arrival_at_Berth': pd.to_datetime(df['Arrival_at_Berth']),
+                    'Predicted_Departure': df_processed['Predicted_Departure'],
+                    'Predicted_Hours': df_processed['Predicted_Hours_at_Berth'].round(2)
+                }).sort_values('Arrival_at_Berth')
+                st.dataframe(predictions_df)
                 
                 # Add explanation
                 st.markdown("""
@@ -901,83 +785,88 @@ def main():
                 )
             
             with tab3:
-                st.subheader("Vessel Analysis and Insights")
+                st.subheader("Berth Performance Insights")
                 
-                # Prepare data
-                df_analysis = df_processed.copy()
-                # Create size groups using rank-based approach
-                df_analysis['size_rank'] = df_analysis['vessel_size_factor'].rank(method='first')
-                total_rows = len(df_analysis)
-                df_analysis['size_group'] = pd.cut(df_analysis['size_rank'],
-                                                  bins=[0, total_rows/4, total_rows/2, 3*total_rows/4, total_rows],
-                                                  labels=['Small', 'Medium', 'Large', 'Very Large'],
-                                                  include_lowest=True)
+                # Calculate daily metrics
+                df_processed['Date'] = pd.to_datetime(df_processed['Arrival_at_Berth']).dt.date
                 
-                # Create density groups using rank-based approach
-                df_analysis['density_rank'] = df_analysis['cargo_density'].rank(method='first')
-                df_analysis['density_group'] = pd.cut(df_analysis['density_rank'],
-                                                    bins=[0, total_rows/4, total_rows/2, 3*total_rows/4, total_rows],
-                                                    labels=['Low', 'Medium', 'High', 'Very High'],
-                                                    include_lowest=True)
+                # Calculate daily utilization for each berth
+                daily_stats = []
+                unique_dates = sorted(df_processed['Date'].unique())
                 
-                # Drop the temporary rank columns
-                df_analysis = df_analysis.drop(['size_rank', 'density_rank'], axis=1)
+                for date in unique_dates:
+                    date_df = df_processed[df_processed['Date'] == date]
+                    date_stats = {'Date': date}
+                    
+                    # Calculate utilization
+                    total_hours = 0
+                    total_gap_hours = 0
+                    gap_count = 0
+                    vessel_count = 0
                 
-                # Calculate metrics
-                # 1. Size impact on berth time
-                size_means = df_analysis.groupby(['size_group', 'Berth_Code'], observed=True)['Predicted_Hours_at_Berth'].mean().reset_index()
+                    for berth in df_processed['Berth_Code'].unique():
+                        berth_df = date_df[date_df['Berth_Code'] == berth]
+                        if not berth_df.empty:
+                            hours = berth_df['Predicted_Hours_at_Berth'].sum()
+                            total_hours += hours
+                            vessel_count += len(berth_df)
+                            
+                            # Calculate gaps between vessels
+                            if len(berth_df) > 1:
+                                # Sort by arrival time and ensure datetime format
+                                berth_df = berth_df.sort_values('Arrival_at_Berth')
+                                berth_df['Arrival_at_Berth'] = pd.to_datetime(berth_df['Arrival_at_Berth'])
+                                berth_df['Predicted_Departure'] = pd.to_datetime(berth_df['Predicted_Departure'])
+                                
+                                # Calculate gaps between consecutive vessels
+                                for i in range(len(berth_df)-1):
+                                    current_departure = berth_df['Predicted_Departure'].iloc[i]
+                                    next_arrival = berth_df['Arrival_at_Berth'].iloc[i+1]
+                                    gap = (next_arrival - current_departure).total_seconds() / 3600
+                                    
+                                    # Only count gaps where there's actual time between vessels
+                                    if gap > 0:
+                                        total_gap_hours += gap
+                                        gap_count += 1
                 
-                # 2. Density impact on turnaround time
-                df_analysis['Turnaround_Time'] = (pd.to_datetime(df_analysis['Predicted_Departure']) - 
-                                                pd.to_datetime(df_analysis['Actual_Arrival'])).dt.total_seconds() / 3600
-                
-                density_stats = df_analysis.groupby('density_group', observed=True).agg({
-                    'Turnaround_Time': ['mean', 'std', 'count']
-                }).reset_index()
-                density_stats.columns = ['density_group', 'mean_time', 'std_time', 'count']
+                    date_stats['Utilization'] = (total_hours / (24 * len(df_processed['Berth_Code'].unique()))) * 100
+                    date_stats['Average_Gap'] = total_gap_hours / gap_count if gap_count > 0 else 0
+                    date_stats['Vessel_Count'] = vessel_count
+                    daily_stats.append(date_stats)
+            
+                daily_df = pd.DataFrame(daily_stats)
                 
                 # Create visualizations
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Create scatter plot with lines for size impact
-                    colors = ['#1f77b4', '#d62728', '#2ca02c', '#9467bd', '#8c564b', '#e377c2']
+                    # Create utilization trend chart
                     fig1 = go.Figure()
                     
-                    # Add traces for each berth
-                    for berth in size_means['Berth_Code'].unique():
-                        berth_data = size_means[size_means['Berth_Code'] == berth]
-                        fig1.add_trace(go.Scatter(
-                            x=berth_data['size_group'],
-                            y=berth_data['Predicted_Hours_at_Berth'],
-                            name=berth,
-                            mode='lines+markers',
-                            line=dict(width=2),
-                            marker=dict(
-                                size=12,
-                                line=dict(width=2, color='black')
-                            )
-                        ))
+                    fig1.add_trace(go.Scatter(
+                        x=daily_df['Date'],
+                        y=daily_df['Utilization'],
+                        mode='lines+markers',
+                        name='Daily Utilization',
+                        line=dict(width=2, color='#1f77b4'),
+                        marker=dict(
+                            size=8,
+                            color='#1f77b4',
+                            line=dict(width=2, color='black')
+                        )
+                    ))
                     
-                    # Update layout with darker text
                     fig1.update_layout(
                         title=dict(
-                            text='Vessel Size Impact on Berth Time',
+                            text='Daily Berth Utilization Trend',
                             font=dict(size=18, color='black', family='Arial Black')
                         ),
                         plot_bgcolor='white',
                         paper_bgcolor='white',
                         font=dict(size=14, color='black', family='Arial'),
-                        showlegend=True,
-                        legend=dict(
-                            title=dict(text='Berth', font=dict(size=14, color='black', family='Arial Black')),
-                            font=dict(size=12, color='black'),
-                            bgcolor='rgba(255,255,255,0.8)',
-                            bordercolor='black',
-                            borderwidth=1
-                        ),
+                        showlegend=False,
                         xaxis=dict(
-                            title='Vessel Size Groups',
+                            title='Date',
                             title_font=dict(size=14, color='black', family='Arial Black'),
                             tickfont=dict(size=12, color='black'),
                             showgrid=False,
@@ -986,7 +875,7 @@ def main():
                             linecolor='black'
                         ),
                         yaxis=dict(
-                            title='Average Hours at Berth',
+                            title='Utilization (%)',
                             title_font=dict(size=14, color='black', family='Arial Black'),
                             tickfont=dict(size=12, color='black'),
                             showgrid=True,
@@ -1000,46 +889,25 @@ def main():
                     st.plotly_chart(fig1, use_container_width=True)
                 
                 with col2:
-                    # Create scatter plot with lines for turnaround time
+                    # Create average gap trend chart
                     fig2 = go.Figure()
                     
-                    # Add scatter plot with error bars
                     fig2.add_trace(go.Scatter(
-                        x=density_stats['density_group'],
-                        y=density_stats['mean_time'],
+                        x=daily_df['Date'],
+                        y=daily_df['Average_Gap'],
                         mode='lines+markers',
-                        name='Average Turnaround Time',
-                        line=dict(width=2, color='#1f77b4'),
+                        name='Average Gap',
+                        line=dict(width=2, color='#2ca02c'),
                         marker=dict(
-                            size=12,
-                            color='#1f77b4',
+                            size=8,
+                            color='#2ca02c',
                             line=dict(width=2, color='black')
-                        ),
-                        error_y=dict(
-                            type='data',
-                            array=density_stats['std_time'],
-                            visible=True,
-                            color='black',
-                            thickness=1.5,
-                            width=10
                         )
                     ))
                     
-                    # Add sample size annotations
-                    for i, row in density_stats.iterrows():
-                        fig2.add_annotation(
-                            x=row['density_group'],
-                            y=row['mean_time'],
-                            text=f'n={int(row["count"])}',
-                            yshift=20,
-                            showarrow=False,
-                            font=dict(size=12, color='black', family='Arial')
-                        )
-                    
-                    # Update layout with darker text
                     fig2.update_layout(
                         title=dict(
-                            text='Cargo Density Impact on Total Turnaround Time',
+                            text='Daily Average Gap Between Vessels',
                             font=dict(size=18, color='black', family='Arial Black')
                         ),
                         plot_bgcolor='white',
@@ -1047,7 +915,7 @@ def main():
                         font=dict(size=14, color='black', family='Arial'),
                         showlegend=False,
                         xaxis=dict(
-                            title='Cargo Density Groups',
+                            title='Date',
                             title_font=dict(size=14, color='black', family='Arial Black'),
                             tickfont=dict(size=12, color='black'),
                             showgrid=False,
@@ -1056,7 +924,7 @@ def main():
                             linecolor='black'
                         ),
                         yaxis=dict(
-                            title='Average Turnaround Time (hours)',
+                            title='Average Gap (hours)',
                             title_font=dict(size=14, color='black', family='Arial Black'),
                             tickfont=dict(size=12, color='black'),
                             showgrid=True,
@@ -1068,18 +936,20 @@ def main():
                     )
                     
                     st.plotly_chart(fig2, use_container_width=True)
-                    
-                    # Add explanation with darker text
-                    st.markdown("""
-                    <div style='color: black; font-family: Arial;'>
-                    <strong>Analysis Insights:</strong>
-                    <ul>
-                        <li>Left chart shows how vessel size affects berth time for each berth</li>
-                        <li>Right chart shows total turnaround time by cargo density</li>
-                        <li>Error bars show standard deviation, 'n' shows number of vessels in each group</li>
-                    </ul>
-                    </div>
-                    """, unsafe_allow_html=True)
+                
+                # Add explanation
+                st.markdown("""
+                <div style='color: black; font-family: Arial;'>
+                <strong>Analysis Insights:</strong>
+                <ul>
+                    <li>Left chart shows daily berth utilization percentage trend</li>
+                    <li>Right chart shows average gap between vessels per day</li>
+                    <li>Both metrics help identify efficiency patterns and potential bottlenecks</li>
+                </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
+
                     
         except Exception as e:
             st.error(f"Error processing data: {str(e)}")
