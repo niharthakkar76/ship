@@ -222,6 +222,7 @@ class PredictionResponse(BaseModel):
 
 class ForecastRequest(BaseModel):
     days_ahead: int = Field(14, description="Number of days to forecast ahead")
+    vessels: List[VesselData] = Field(None, description="Optional vessel data for forecast. If not provided, the API will use test data if available.")
 
 # Function to predict berth arrival time
 def predict_berth_arrival(actual_arrival, vessel_size, port_code):
@@ -485,12 +486,31 @@ async def forecast(request: ForecastRequest):
         # Load models
         model_info, berth_encoder, feature_scaler, vessel_encoder = load_model()
         
-        # Load sample data for generating forecasts
-        try:
-            df = pd.read_csv('test_data.csv')
-        except:
-            # If test_data.csv is not available, try Data_Berth.csv
-            df = pd.read_csv('Data_Berth.csv')
+        # Check if user provided vessel data
+        if request.vessels and len(request.vessels) > 0:
+            # Use vessel data provided by the user
+            vessel_data = []
+            for vessel in request.vessels:
+                vessel_data.append({
+                    'VCN': vessel.VCN,
+                    'IMO': vessel.IMO,
+                    'Vessel_Name': vessel.Vessel_Name,
+                    'LOA': vessel.LOA,
+                    'Port_Code': vessel.Port_Code,
+                    'Berth_Code': vessel.Berth_Code,
+                    'No_of_Teus': vessel.No_of_Teus,
+                    'GRT': vessel.GRT,
+                    'Actual_Arrival': pd.to_datetime(vessel.Actual_Arrival)
+                })
+            df = pd.DataFrame(vessel_data)
+        else:
+            # Try to load test data from CSV files
+            try:
+                # First try to load test_data.csv
+                df = pd.read_csv('test_data.csv')
+            except:
+                # If test_data.csv is not available, try Data_Berth.csv
+                df = pd.read_csv('Data_Berth.csv')
         
         # Preprocess data
         df_processed = preprocess_data(df, berth_encoder, vessel_encoder)
