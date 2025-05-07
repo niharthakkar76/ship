@@ -8,14 +8,7 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy initialization script and API first
-COPY init_models.py api.py ./
-
-# Copy start script
-COPY start.sh ./
-RUN chmod +x /app/start.sh
-
-# Copy remaining files
+# Copy all application files
 COPY . .
 
 # Make sure the models directory exists with proper permissions
@@ -27,8 +20,12 @@ RUN python init_models.py
 # Verify model files exist
 RUN ls -la models/
 
-# Expose the port the app runs on
+# Create a simple start script
+RUN echo '#!/bin/bash\nuvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}' > start.sh && \
+    chmod +x start.sh
+
+# Expose the port
 EXPOSE 8000
 
-# Use the start script to handle environment variables properly
-CMD ["/bin/bash", "/app/start.sh"]
+# Command to run the API
+CMD ["./start.sh"]

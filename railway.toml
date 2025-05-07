@@ -3,11 +3,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "/bin/bash /app/start.sh"
-healthcheckEnabled = false
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 
-# Add environment variables if needed
-[variables]
-DEBUG = "true"
+# No need for healthcheck or custom start command
+# The Dockerfile CMD will be used automatically

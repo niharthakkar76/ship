@@ -14,8 +14,8 @@ python init_models.py
 echo "Model files in directory:"
 ls -la models/
 
-# Get the PORT from environment or use 8000 as default
-PORT=${PORT:-8000}
+# Railway provides PORT environment variable
+# We need to use exactly what Railway provides
 echo "Starting API server on port: $PORT"
 
 # Run the API with proper logging
