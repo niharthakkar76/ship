@@ -18,7 +18,8 @@ def create_sample_model():
         os.path.exists('models/feature_scaler.pkl') and
         os.path.exists('models/vessel_encoder.pkl')):
         print("Model files already exist. Skipping initialization.")
-        return
+        # Force recreation of model files to ensure compatibility
+        print("Forcing recreation of model files to ensure compatibility...")
     
     print("Creating sample model files...")
     
@@ -70,7 +71,7 @@ def create_sample_model():
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     
-    # Train a simple model
+    # Train a simple model - using RandomForestRegressor which is compatible with the API
     model = RandomForestRegressor(
         n_estimators=50,
         max_depth=5,
