@@ -8,23 +8,27 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all application files
+# Copy initialization script and API first
+COPY init_models.py api.py ./
+
+# Copy start script
+COPY start.sh ./
+RUN chmod +x /app/start.sh
+
+# Copy remaining files
 COPY . .
 
 # Make sure the models directory exists with proper permissions
 RUN mkdir -p models && chmod -R 755 models
 
-# Initialize model files
+# Initialize model files during build
 RUN python init_models.py
 
 # Verify model files exist
-RUN python -c "import os; print('Model files:', os.listdir('./models/'))"
-
-# Make sure start script is executable
-RUN chmod +x /app/start.sh
+RUN ls -la models/
 
 # Expose the port the app runs on
 EXPOSE 8000
 
 # Use the start script to handle environment variables properly
-CMD ["/app/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]

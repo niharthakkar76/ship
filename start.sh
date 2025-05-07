@@ -1,7 +1,22 @@
 #!/bin/bash
 
-# For Railway, we know we need to use port 8000
-echo "Starting API server on port: 8000"
+# Enable debugging
+set -x
 
-# Run the API on port 8000 for Railway
-exec uvicorn api:app --host 0.0.0.0 --port 8000
+# Create models directory if it doesn't exist
+mkdir -p models
+chmod -R 755 models
+
+# Initialize models if needed
+python init_models.py
+
+# List model files for debugging
+echo "Model files in directory:"
+ls -la models/
+
+# Get the PORT from environment or use 8000 as default
+PORT=${PORT:-8000}
+echo "Starting API server on port: $PORT"
+
+# Run the API with proper logging
+exec uvicorn api:app --host 0.0.0.0 --port $PORT --log-level debug
