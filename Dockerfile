@@ -20,8 +20,11 @@ RUN python init_models.py
 # Verify model files exist
 RUN python -c "import os; print('Model files:', os.listdir('./models/'))"
 
+# Make sure start script is executable
+RUN chmod +x /app/start.sh
+
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the API directly
-CMD uvicorn api:app --host 0.0.0.0 --port $PORT
+# Use the start script to handle environment variables properly
+CMD ["/app/start.sh"]
