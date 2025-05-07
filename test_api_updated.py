@@ -49,7 +49,34 @@ def test_api(base_url):
     # Test forecast endpoint
     try:
         print("\n3. Testing /forecast endpoint...")
-        forecast_data = {"days_ahead": 7}
+        # Include vessel data in the forecast request to avoid CSV file dependency
+        forecast_data = {
+            "days_ahead": 7,
+            "vessels": [
+                {
+                    "VCN": "VCN12345",
+                    "IMO": "IMO9876543",
+                    "Vessel_Name": "Mediterranean Queen",
+                    "LOA": 320.5,
+                    "Port_Code": "SGSIN",
+                    "Berth_Code": "BRT001",
+                    "No_of_Teus": 7500,
+                    "GRT": 95000,
+                    "Actual_Arrival": "2025-05-07T10:00:00"
+                },
+                {
+                    "VCN": "VCN67890",
+                    "IMO": "IMO8765432",
+                    "Vessel_Name": "Nordic Explorer",
+                    "LOA": 290.0,
+                    "Port_Code": "SGSIN",
+                    "Berth_Code": "BRT002",
+                    "No_of_Teus": 6800,
+                    "GRT": 85000,
+                    "Actual_Arrival": "2025-05-07T14:30:00"
+                }
+            ]
+        }
         
         headers = {"Content-Type": "application/json"}
         response = requests.post(
@@ -58,7 +85,12 @@ def test_api(base_url):
             headers=headers
         )
         print(f"Status code: {response.status_code}")
-        print(f"Response preview: {json.dumps(response.json()['forecast_data'][:2], indent=2)}")
+        
+        # Print the full response or error message
+        if response.status_code == 200:
+            print(f"Response preview: {json.dumps(response.json()['forecast'][:2], indent=2)}")
+        else:
+            print(f"Error response: {response.text}")
     except Exception as e:
         print(f"Error testing forecast endpoint: {str(e)}")
 

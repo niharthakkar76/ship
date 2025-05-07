@@ -40,33 +40,46 @@ def load_model():
 # Preprocess data
 def preprocess_data(df, berth_encoder, vessel_encoder):
     """Preprocess input data for prediction"""
-    # Convert timestamp columns to datetime
-    timestamp_cols = ['Actual_Arrival', 'Arrival_at_Berth']
-    for col in timestamp_cols:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], format='mixed', errors='coerce')
+    # Create a copy to avoid modifying the original dataframe
+    df_processed = df.copy()
     
-    # Create vessel features
-    df['vessel_size_factor'] = df['LOA'] * df['GRT'] / 1000000
-    df['cargo_density'] = df['No_of_Teus'] / df['GRT']
+    # Convert string dates to datetime if needed
+    if 'Actual_Arrival' in df_processed.columns and df_processed['Actual_Arrival'].dtype == 'object':
+        df_processed['Actual_Arrival'] = pd.to_datetime(df_processed['Actual_Arrival'])
     
-    # Extract time components
-    df['arrival_hour'] = df['Actual_Arrival'].dt.hour
-    df['arrival_day'] = df['Actual_Arrival'].dt.dayofweek
-    df['arrival_month'] = df['Actual_Arrival'].dt.month
+    # Calculate vessel size factor
+    df_processed['vessel_size_factor'] = df_processed['LOA'] * df_processed['GRT'] / 1000000
+    
+    # Calculate cargo density
+    df_processed['cargo_density'] = df_processed['No_of_Teus'] / df_processed['GRT']
+    
+    # Extract time features from arrival time
+    if 'Actual_Arrival' in df_processed.columns:
+        df_processed['arrival_hour'] = df_processed['Actual_Arrival'].dt.hour
+        df_processed['arrival_day'] = df_processed['Actual_Arrival'].dt.dayofweek
+        df_processed['arrival_month'] = df_processed['Actual_Arrival'].dt.month
+    
+    # Handle unseen berth codes by mapping them to known codes
+    known_berths = berth_encoder.classes_
+    for i, berth in enumerate(df_processed['Berth_Code']):
+        if berth not in known_berths:
+            # Map unknown berth to a known one (first one in the encoder)
+            print(f"Warning: Unknown berth code '{berth}' detected. Mapping to '{known_berths[0]}'")
+            df_processed.loc[i, 'Berth_Code'] = known_berths[0]
+    
+    # Handle unseen vessel names by mapping them to known names
+    known_vessels = vessel_encoder.classes_
+    for i, vessel in enumerate(df_processed['Vessel_Name']):
+        if vessel not in known_vessels:
+            # Map unknown vessel to a known one (first one in the encoder)
+            print(f"Warning: Unknown vessel name '{vessel}' detected. Mapping to '{known_vessels[0]}'")
+            df_processed.loc[i, 'Vessel_Name'] = known_vessels[0]
     
     # Encode categorical variables
-    df['Berth_Code_encoded'] = berth_encoder.transform(df['Berth_Code'])
+    df_processed['Berth_Code_encoded'] = berth_encoder.transform(df_processed['Berth_Code'])
+    df_processed['Vessel_Name_encoded'] = vessel_encoder.transform(df_processed['Vessel_Name'])
     
-    # Handle vessel encoding - fit if not already fit
-    try:
-        df['Vessel_Name_encoded'] = vessel_encoder.transform(df['Vessel_Name'])
-    except ValueError:
-        # If vessel encoder hasn't seen these categories, fit it first
-        vessel_encoder.fit(df['Vessel_Name'])
-        df['Vessel_Name_encoded'] = vessel_encoder.transform(df['Vessel_Name'])
-    
-    return df
+    return df_processed
 
 # Generate confidence intervals
 def generate_confidence_intervals(model, X_scaled, n_iterations=100):
