@@ -8,23 +8,24 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy initialization script first
-COPY init_models.py .
-
-# Copy the application code
+# Copy all application files
 COPY . .
 
-# Make sure the models directory exists and has proper permissions
+# Make sure the models directory exists with proper permissions
 RUN mkdir -p models && chmod -R 755 models
 
-# Initialize model files if they don't exist
+# Initialize model files
 RUN python init_models.py
 
-# Create a simple test to verify model files
+# Verify model files exist
 RUN python -c "import os; print('Model files:', os.listdir('./models/'))"
+
+# Create a simple web server for health checks
+RUN echo '#!/bin/bash\npython -m http.server $PORT & uvicorn api:app --host 0.0.0.0 --port 8000' > start.sh && \
+    chmod +x start.sh
 
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the API with environment variable for port
-CMD uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}
+# Command to run the API
+CMD ["/app/start.sh"]
